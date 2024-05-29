@@ -25,10 +25,12 @@ initializeDatabase().then(dbChain => {
         }
     }
 
+    // Sample data to be used for each block
     function generateBlockData() {
         return { blockData: crypto.randomBytes(20).toString('hex') };
     }
 
+    // Function to add new blocks at intervals
     function addBlockAtInterval(interval) {
         setInterval(async () => {
             chain = await addBlock(chain, generateBlockData());
@@ -38,23 +40,22 @@ initializeDatabase().then(dbChain => {
         }, interval);
     }
 
+    // Start the P2P server and UDP server with available ports
     findAvailablePort(initialP2pPort, (err, p2pPort) => {
         if (err) {
             console.error('Error finding available P2P port:', err);
             return;
         }
-
-        // Start the P2P server and UDP server with available ports
-        findAvailablePort(initialP2pPort, (err, p2pPort) => {
+        findAvailablePort(initialUdpPort, (err, udpPort) => {
             if (err) {
-                console.error('Error finding available P2P port:', err);
+                console.error('Error finding available UDP port:', err);
                 return;
             }
-            findAvailablePort(initialUdpPort, (err, udpPort) => {
-                if (err) {
-                    console.error('Error finding available UDP port:', err);
-                    return;
-                }
+
+            initializeDatabase().then(initialChain => {
+                chain = initialChain;
+                console.log('Blockchain initialized successfully');
+
                 initP2PServer(p2pPort, handleBlockProposal, handleBlockVote, chain, addBlock, validateChain, broadcast, startNewRound);
                 initUdpServer(udpPort, p2pPort);
                 addBlockAtInterval(10000); // Start adding blocks every 10 seconds
@@ -63,8 +64,8 @@ initializeDatabase().then(dbChain => {
 
                 // Start the API server
                 require('./api'); // Import and start the REST server
+            }).catch(err => {
+                console.error('Failed to initialize blockchain:', err);
             });
         });
-    }).catch(err => {
-        console.error('Failed to initialize blockchain:', err);
     });
