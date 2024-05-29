@@ -1,99 +1,68 @@
-const Blockchain = require('./blockchain');
-const Block = require('./blockchain').Block; // Import Block class
-const EC = require('elliptic').ec;
-const ec = new EC('secp256k1'); // Algorithm used in Bitcoin
+const { MessageType } = require('./constants');
 
-class BFTNode {
-    constructor (id, blockchain) {
-        this.id = id;
-        this.blockchain = blockchain;
-        this.peers = [];
-        this.pendingBlocks = [];
-        this.receivedBlocks = new Set(); // Track received blocks to avoid re-processing
-        this.keyPair = ec.genKeyPair(); // Generate a new key pair for this node
+let currentRound = 0;
+let currentProposer = null;
+let votes = {};
+let peers = [];
+let localIp = '';
+
+function initializeBFT(initialPeers, ip) {
+    peers = initialPeers;
+    localIp = ip;
+    currentRound = 0;
+    currentProposer = peers[0];
+    votes = {};
+}
+
+function getNextProposer() {
+    const index = peers.indexOf(currentProposer);
+    return peers[(index + 1) % peers.length];
+}
+
+function startNewRound(chain, broadcast) {
+    currentRound++;
+    currentProposer = getNextProposer();
+    votes = {};
+
+    if (currentProposer === localIp) {
+        proposeBlock(chain[chain.length - 1], broadcast);
     }
+}
 
-    connectPeer(peer) {
-        this.peers.push(peer);
-    }
+function proposeBlock(lastBlock, broadcast) {
+    const blockProposal = { ...lastBlock, round: currentRound };
+    broadcast({ type: MessageType.BLOCK_PROPOSAL, data: JSON.stringify(blockProposal) });
+}
 
-    proposeBlock(data) {
-        const newBlock = new Block(
-            this.blockchain.chain.length,
-            new Date().toISOString(),
-            data,
-            this.blockchain.getLatestBlock().hash
-        );
+function handleBlockProposal(message, chain, addBlock, validateChain, broadcast) {
+    const blockProposal = JSON.parse(message.data);
 
-        this.signBlock(newBlock); // Sign the block
+    if (blockProposal.round === currentRound) {
+        if (validateChain([...chain, blockProposal])) {
+            votes[blockProposal.hash] = (votes[blockProposal.hash] || 0) + 1;
 
-        this.pendingBlocks.push(newBlock);
-        this.broadcastProposal(newBlock);
-    }
-
-    receiveProposal(block) {
-        const blockHash = block.hash;
-        if (this.receivedBlocks.has(blockHash)) {
-            return; // Block already received and processed
-        }
-        this.receivedBlocks.add(blockHash);
-
-        if (this.isValidBlock(block)) {
-            this.pendingBlocks.push(block);
-            this.broadcastProposal(block);
-        }
-    }
-
-    isValidBlock(block) {
-        const previousBlock = this.blockchain.getLatestBlock();
-        if (block.previousHash !== previousBlock.hash) {
-            return false;
-        }
-        if (block.hash !== block.calculateHash()) {
-            return false;
-        }
-        return true;
-    }
-
-    signBlock(block) {
-        const hash = block.calculateHash();
-        const sig = this.keyPair.sign(hash);
-        block.signature = sig.toDER('hex');
-    }
-
-    broadcastProposal(block) {
-        this.peers.forEach(peer => {
-            peer.receiveProposal(block);
-        });
-    }
-
-    reachConsensus() {
-        const validBlocks = this.pendingBlocks.filter(block => this.isValidBlock(block));
-        if (validBlocks.length > (this.peers.length + 1) / 3) {
-            const newBlock = validBlocks[0];
-            this.blockchain.addBlock(newBlock);
-            this.pendingBlocks = [];
-            this.broadcastConsensus(newBlock);
-        }
-    }
-
-    broadcastConsensus(block) {
-        this.peers.forEach(peer => {
-            peer.receiveConsensus(block);
-        });
-    }
-
-    receiveConsensus(block) {
-        const blockHash = block.hash;
-        if (this.receivedBlocks.has(blockHash)) {
-            return; // Block already received and processed
-        }
-        this.receivedBlocks.add(blockHash);
-
-        if (this.isValidBlock(block)) {
-            this.blockchain.addBlock(block);
+            if (votes[blockProposal.hash] > Math.floor(peers.length / 2)) {
+                chain = addBlock(chain, blockProposal.data);
+                startNewRound(chain, broadcast);
+            } else {
+                broadcast({ type: MessageType.BLOCK_VOTE, data: blockProposal.hash });
+            }
         }
     }
 }
 
-module.exports = BFTNode;
+function handleBlockVote(message, startNewRound) {
+    const blockHash = message.data;
+    votes[blockHash] = (votes[blockHash] || 0) + 1;
+
+    if (votes[blockHash] > Math.floor(peers.length / 2)) {
+        startNewRound();
+    }
+}
+
+module.exports = {
+    initializeBFT,
+    startNewRound,
+    handleBlockProposal,
+    handleBlockVote,
+};

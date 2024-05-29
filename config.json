@@ -1,0 +1,8 @@
+{
+    "chainName": "VagaChain",
+    "p2pPort": 5001,
+    "udpPort": 5002,
+    "staticIp": "192.168.3.17",
+    "walletAddressPrefix": "vaga", 
+    "peers": []
+}
