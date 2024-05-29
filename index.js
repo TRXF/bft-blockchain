@@ -4,7 +4,7 @@ const { initUdpServer, initP2PServer, connectToPeer, broadcast, broadcastNodeAdd
 const { generateGenesisBlock, addBlock, validateChain, addTransaction, multiStore, initializeDatabase } = require('./blockchain');
 const { findAvailablePort } = require('./utils');
 const { initializeBFT, startNewRound, handleBlockProposal, handleBlockVote } = require('./bft-consensus');
-const { Wallet, Transaction } = require('./wallet');
+const { Wallet, Transaction } = require('./transaction');
 const config = JSON.parse(fs.readFileSync('config.json', 'utf-8'));
 const crypto = require('crypto');
 
@@ -26,14 +26,12 @@ initializeDatabase().then(dbChain => {
     }
 
     // Sample data to be used for each block
-    function generateBlockData() {
-        return { blockData: crypto.randomBytes(20).toString('hex') };
-    }
+    const blockData = { blockData: crypto.randomBytes().toString('hex') };
 
     // Function to add new blocks at intervals
     function addBlockAtInterval(interval) {
         setInterval(async () => {
-            chain = await addBlock(chain, generateBlockData());
+            chain = await addBlock(chain, blockData);
             displayChain(chain);
             console.log("Healthcheck", validateChain(chain));
             broadcast(responseLatestMsg(chain));
@@ -51,21 +49,16 @@ initializeDatabase().then(dbChain => {
                 console.error('Error finding available UDP port:', err);
                 return;
             }
+            initP2PServer(p2pPort, handleBlockProposal, handleBlockVote, chain, addBlock, validateChain, broadcast, startNewRound);
+            initUdpServer(udpPort, p2pPort);
+            addBlockAtInterval(10000); // Start adding blocks every 10 seconds
+            initializeBFT(peers, localIp);
+            startNewRound(chain, broadcast);
 
-            initializeDatabase().then(initialChain => {
-                chain = initialChain;
-                console.log('Blockchain initialized successfully');
-
-                initP2PServer(p2pPort, handleBlockProposal, handleBlockVote, chain, addBlock, validateChain, broadcast, startNewRound);
-                initUdpServer(udpPort, p2pPort);
-                addBlockAtInterval(10000); // Start adding blocks every 10 seconds
-                initializeBFT(peers, localIp);
-                startNewRound(chain, broadcast);
-
-                // Start the API server
-                require('./api'); // Import and start the REST server
-            }).catch(err => {
-                console.error('Failed to initialize blockchain:', err);
-            });
+            // Start the API server
+            require('./api'); // Import and start the REST server
         });
     });
+}).catch(err => {
+    console.error('Failed to initialize blockchain:', err);
+});

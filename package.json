@@ -1,20 +1,20 @@
 {
   "name": "bft-blockchain",
   "version": "1.0.0",
-  "description": "Open Source Blockchain for BFT Consensus",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "crypto-js": "^4.0.0",
-    "dgram": "^1.0.1",
+    "crypto": "^1.0.1",
     "elliptic": "^6.5.5",
     "express": "^4.19.2",
     "grpc-tools": "^1.12.4",
     "net": "^1.0.2",
-    "nodemon": "^3.1.2",
     "os": "^0.1.1",
     "sqlite3": "^5.1.7",
     "uuid": "^9.0.1",
