@@ -35,10 +35,10 @@ function initUdpServer(udpPort, p2pPort) {
 
     function broadcastPresence() {
         const message = JSON.stringify({ type: MessageType.BROADCAST, p2pPort });
-        udpServer.send(message, udpPort, staticIp); // Use the static IP address
+        udpServer.send(message, udpPort, staticIp);
     }
 
-    setInterval(broadcastPresence, 5000); // Broadcast presence every 5 seconds
+    setInterval(broadcastPresence, 5000);
 }
 
 function initP2PServer(p2pPort, handleBlockProposal, handleBlockVote, chain, addBlock, validateChain, broadcast, startNewRound) {
@@ -194,7 +194,6 @@ function receive(callback) {
 }
 
 function handleNewTransaction(message) {
-    // Implement your logic for handling new transactions
     console.log("New transaction received: ", message.data);
 }
 
@@ -209,7 +208,7 @@ module.exports = {
     responseLatestMsg,
     queryAllMsg,
     queryChainLengthMsg,
-    peers, // Export peers to be used by other modules
-    localIp, // Export localIp to be used by other modules
-    receive, // Export receive to be used by other modules
+    peers,
+    localIp,
+    receive,
 };

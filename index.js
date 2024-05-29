@@ -5,7 +5,7 @@ const { initUdpServer, initP2PServer, connectToPeer, broadcast, broadcastNodeAdd
 const { generateGenesisBlock, addBlock, validateChain, addTransaction, multiStore, initializeDatabase } = require('./blockchain');
 const { findAvailablePort } = require('./utils');
 const { initializeBFT, startNewRound, handleBlockProposal, handleBlockVote } = require('./bft-consensus');
-const { Wallet, Transaction } = require('./transaction');
+const { Wallet, Transaction } = require('./wallet');
 const config = JSON.parse(fs.readFileSync('config.json', 'utf-8'));
 
 const { chainName, p2pPort: initialP2pPort, udpPort: initialUdpPort, staticIp } = config;
@@ -21,12 +21,10 @@ function displayChain(chain) {
     }
 }
 
-// Sample data to be used for each block
 function generateBlockData() {
     return { blockData: crypto.randomBytes(20).toString('hex') };
 }
 
-// Function to add new blocks at intervals
 function addBlockAtInterval(interval) {
     setInterval(async () => {
         chain = await addBlock(chain, generateBlockData());
@@ -36,7 +34,6 @@ function addBlockAtInterval(interval) {
     }, interval);
 }
 
-// Start the P2P server and UDP server with available ports
 findAvailablePort(initialP2pPort, (err, p2pPort) => {
     if (err) {
         console.error('Error finding available P2P port:', err);

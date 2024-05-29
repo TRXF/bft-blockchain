@@ -1,16 +1,19 @@
 const SHA256 = require('crypto-js/sha256');
 const sqlite3 = require('sqlite3').verbose();
-const { MultiStore } = require('./store');
+const KVStore = require('./store'); // Ensure KVStore is imported correctly
 const path = require('path');
 const { broadcast } = require('./networking');
 const { MessageType } = require('./constants');
+const fs = require('fs');
 
-const baseStorePath = path.join(__dirname, 'data'); // Define the base path for store data
-const multiStore = new MultiStore(baseStorePath);
+const baseStorePath = path.join(__dirname, 'data');
 const dbPath = path.join(baseStorePath, 'blockchain.db');
 let db = new sqlite3.Database(dbPath);
 
 let transactionQueue = [];
+
+const genesisState = JSON.parse(fs.readFileSync('./data/genesisState.json', 'utf-8'));
+const bankStore = new KVStore(path.join(baseStorePath, 'bank.json')); // Initialize bankStore
 
 function calculateHash({ previousHash, timestamp, data, nonce = 1, height }) {
     return SHA256(previousHash + timestamp + JSON.stringify(data) + nonce + height).toString();
@@ -29,7 +32,7 @@ function generateGenesisBlock() {
     return {
         ...block,
         hash: calculateHash(block)
-    }
+    };
 }
 
 function checkDifficulty(difficulty, hash) {
@@ -70,16 +73,16 @@ async function addBlock(chain, data) {
         data,
         previousHash,
         nonce: 0,
-        transactions: transactionQueue // Add queued transactions to the new block
+        transactions: transactionQueue
     };
     const newBlock = mineBlock(4, block);
 
     try {
         const existingBlock = await getBlockByHeight(newBlock.height);
         if (!existingBlock) {
-            await addBlockToDatabase(newBlock); // Save the new block to the database
+            await addBlockToDatabase(newBlock);
             chain.push(newBlock);
-            transactionQueue = []; // Clear the transaction queue after adding them to the block
+            transactionQueue = [];
             broadcast({ type: MessageType.CURRENT_HEIGHT, data: { height: newBlock.height } });
         } else {
             console.log(`Block with height ${newBlock.height} already exists. Skipping...`);
@@ -107,7 +110,7 @@ function getBlockByHeight(height) {
 function validateChain(chain) {
     function tce(chain, index) {
         if (index === 0) return true;
-        if (!chain[index]) return false; // Check if the block exists
+        if (!chain[index]) return false;
         const { hash, ...currentBlockWithoutHash } = chain[index];
         const currentBlock = chain[index];
         const previousBlock = chain[index - 1];
@@ -127,11 +130,11 @@ async function addTransaction(chain, transaction) {
         return;
     }
 
-    transactionQueue.push(transaction); // Add transaction to the queue
+    transactionQueue.push(transaction);
     console.log("Transaction added to queue");
 }
 
-function initializeDatabase() {
+async function initializeDatabase() {
     return new Promise((resolve, reject) => {
         db = new sqlite3.Database(dbPath, (err) => {
             if (err) {
@@ -231,9 +234,9 @@ module.exports = {
     mineBlock,
     addBlock,
     validateChain,
-    multiStore,
     addTransaction,
     initializeDatabase,
     addBlockToDatabase,
-    getBlockByHeight
+    getBlockByHeight,
+    bankStore
 };

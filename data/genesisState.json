@@ -1,0 +1,30 @@
+{
+    "totalSupply": {
+      "stake": 10000000000,
+      "foo": 5000000000
+    },
+    "accounts": {
+      "adminWallet": {
+        "type": "BaseAccount",
+        "address": "vaga2747779382aa84fe21086db87c987f390bee69bb",
+        "coins": [
+          {
+            "denom": "vaga",
+            "amount": 1000000000
+          },
+          {
+            "denom": "vagadev",
+            "amount": 500000000
+          }
+        ]
+      }
+    },
+    "params": {
+      "defaultSendEnabled": true
+    },
+    "sendEnabled": {
+      "stake": true,
+      "foo": false
+    }
+  }
+  

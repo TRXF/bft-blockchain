@@ -1,0 +1,12 @@
+{
+    "adminWallet": [
+        {
+            "denom": "vaga",
+            "amount": 1000000000
+        },
+        {
+            "denom": "vagadev",
+            "amount": 500000000
+        }
+    ]
+}

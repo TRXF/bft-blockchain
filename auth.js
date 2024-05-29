@@ -1,7 +1,9 @@
 const EC = require('elliptic').ec;
 const SHA256 = require('crypto-js/sha256');
-const { multiStore } = require('./blockchain');
-const config = require('./config.json');
+const RIPEMD160 = require('crypto-js/ripemd160');
+const { addressPrefix } = require('./config');
+const KVStore = require('./store'); // Ensure KVStore is imported correctly
+const { Wallet } = require('./wallet');
 
 const ec = new EC('secp256k1');
 
@@ -33,21 +35,17 @@ class Auth {
     }
 
     createAccount(publicKey) {
-        const address = this.generateAddress(publicKey);
+        const address = Wallet.generateAddress(publicKey);
         const accountNumber = this.store.getAllKeys().length + 1;
         const account = new Account(address, publicKey, accountNumber, 0);
         console.log(`Creating account with address: ${address}`); // Debugging log
-        this.store.set(publicKey, account.toJSON()); // Store using the public key
+        this.store.set(address, account.toJSON()); // Store using the address
         return account;
     }
 
-    generateAddress(publicKey) {
-        return SHA256(publicKey + Math.random().toString()).toString().substring(0, 40);
-    }
-
-    getAccount(publicKey) {
-        console.log(`Getting account with public key: ${publicKey}`); // Debugging log
-        const accountData = this.store.get(publicKey);
+    getAccount(address) {
+        console.log(`Getting account with address: ${address}`); // Debugging log
+        const accountData = this.store.get(address);
         console.log(`Account data: ${JSON.stringify(accountData)}`); // Debugging log
         if (accountData) {
             return Account.fromJSON(accountData);
@@ -61,7 +59,7 @@ class Auth {
     }
 
     setAccount(account) {
-        this.store.set(account.publicKey, account.toJSON());
+        this.store.set(account.address, account.toJSON());
     }
 
     getAllAccounts() {
@@ -85,7 +83,7 @@ class Auth {
     }
 }
 
-const authStore = multiStore.mountStore('auth');
+const authStore = new KVStore('./data/auth.json'); // Initialize authStore
 const auth = new Auth(authStore);
 
 module.exports = { Account, Auth, auth };

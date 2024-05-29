@@ -1,3 +1,4 @@
+//constants.js
 const MessageType = {
     BROADCAST: 'BROADCAST',
     QUERY_LATEST: 'QUERY_LATEST',

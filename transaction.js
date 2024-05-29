@@ -1,25 +1,31 @@
 const EC = require('elliptic').ec;
 const SHA256 = require('crypto-js/sha256');
+const RIPEMD160 = require('crypto-js/ripemd160');
+const { addressPrefix } = require('./config');
+const { Wallet } = require('./wallet');
 
 const ec = new EC('secp256k1');
 
 class Transaction {
-    constructor (fromAddress, toAddress, amount, sequence) {
+    constructor (fromAddress, toAddress, amount, sequence, publicKey) {
         this.fromAddress = fromAddress;
         this.toAddress = toAddress;
         this.amount = amount;
         this.sequence = sequence;
         this.timestamp = Date.now();
+        this.publicKey = publicKey; // Store the public key
     }
 
     calculateHash() {
-        // Use template literals for string concatenation
         return SHA256(`${this.fromAddress}${this.toAddress}${this.amount}${this.sequence}${this.timestamp}`).toString();
     }
 
     signTransaction(signingKey) {
-        if (signingKey.getPublic('hex') !== this.fromAddress) {
-            throw new Error('You cannot sign transactions for other wallets!');
+        const publicKey = signingKey.getPublic('hex');
+        const expectedAddress = Wallet.generateAddress(publicKey);
+
+        if (expectedAddress !== this.fromAddress) {
+            throw new Error(`You cannot sign transactions for other wallets! Expected address: ${expectedAddress}, got: ${this.fromAddress}`);
         }
 
         const hashTx = this.calculateHash();
@@ -34,33 +40,11 @@ class Transaction {
             throw new Error('No signature in this transaction');
         }
 
-        const publicKey = ec.keyFromPublic(this.fromAddress, 'hex');
-        return publicKey.verify(this.calculateHash(), this.signature);
+        console.log(this.publicKey);
+
+        const key = ec.keyFromPublic(this.publicKey, 'hex');
+        return key.verify(this.calculateHash(), this.signature);
     }
 }
 
-class Wallet {
-    constructor () {
-        this.keys = this.generateKeys();
-        this.address = this.keys.publicKey;
-    }
-
-    generateKeys() {
-        const keyPair = ec.genKeyPair();
-        return {
-            privateKey: keyPair.getPrivate('hex'),
-            publicKey: keyPair.getPublic('hex'),
-        };
-    }
-
-    createTransaction(to, amount, sequence) {
-        const tx = new Transaction(this.address, to, amount, sequence);
-        // Destructure keys object
-        const { privateKey } = this.keys;
-        const signingKey = ec.keyFromPrivate(privateKey, 'hex');
-        tx.signTransaction(signingKey);
-        return tx;
-    }
-}
-
-module.exports = { Wallet, Transaction };
+module.exports = { Transaction };
