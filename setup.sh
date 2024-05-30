@@ -13,7 +13,7 @@ fi
 # Check if the database file exists
 if [ ! -f "$DB_FILE" ]; then
     echo "Initializing new database..."
-    sqlite3 "$DB_FILE" "CREATE TABLE blockchain (height INTEGER PRIMARY KEY, block TEXT);"
+    sqlite3 "$DB_FILE" "CREATE TABLE blocks (height INTEGER, timestamp INTEGER, data TEXT, previousHash TEXT, nonce INTEGER, hash TEXT, transactions TEXT);"
     # Insert the genesis block
     node -e "const { generateGenesisBlock, addBlockToDatabase } = require('./blockchain'); addBlockToDatabase(generateGenesisBlock());"
 else

@@ -1,3 +1,4 @@
+// api.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Wallet } = require('./wallet');
@@ -6,7 +7,7 @@ const { initializeDatabase, addTransaction, addBlockToDatabase, addBlock } = req
 const { auth } = require('./auth');
 const { broadcast, receive } = require('./networking');
 const { MessageType } = require('./constants');
-const BankModule = require('./bank'); // Correct import
+const BankModule = require('./bank');
 const CrisisModule = require('./crisis');
 const fs = require('fs');
 const { addressPrefix } = require('./config');
@@ -17,7 +18,7 @@ const app = express();
 app.use(bodyParser.json());
 
 const genesisState = JSON.parse(fs.readFileSync('./data/genesisState.json', 'utf-8'));
-const bank = new BankModule(); // Correct instantiation
+const bank = new BankModule();
 bank.initGenesis(genesisState);
 
 const crisis = new CrisisModule();
@@ -26,25 +27,23 @@ initializeDatabase()
     .then(chain => {
         console.log('Blockchain initialized successfully');
 
+        // Wallet Endpoints
         app.post('/wallet', (req, res) => {
             const wallet = new Wallet();
             const account = auth.createAccount(wallet.keys.publicKey);
             res.json({
                 publicKey: wallet.keys.publicKey,
                 privateKey: wallet.keys.privateKey,
-                address: wallet.address, // Use the prefixed address
+                address: wallet.address,
             });
         });
 
+        // Transaction Endpoints
         app.post('/transaction', (req, res) => {
             const { toAddress, amount, privateKey } = req.body;
             const signingKey = ec.keyFromPrivate(privateKey, 'hex');
             const publicKey = signingKey.getPublic('hex');
             const fromAddress = Wallet.generateAddress(publicKey);
-
-            console.log(`Private Key: ${privateKey}`);
-            console.log(`Public Key: ${publicKey}`);
-            console.log(`Derived Address: ${fromAddress}`);
 
             const account = auth.getAccount(fromAddress);
             if (!account) {
@@ -78,6 +77,7 @@ initializeDatabase()
             });
         }
 
+        // Blockchain Endpoints
         app.get('/chain', (req, res) => {
             res.json(chain);
         });
@@ -100,6 +100,7 @@ initializeDatabase()
             res.json(chain);
         });
 
+        // Account Endpoints
         app.get('/account/:address', (req, res) => {
             const account = auth.getAccount(req.params.address);
             if (!account) {
@@ -113,9 +114,10 @@ initializeDatabase()
             res.json(accounts);
         });
 
+        // Key-Value Store Endpoints
         app.get('/store/:name/:key', (req, res) => {
             const { name, key } = req.params;
-            const store = new KVStore(`./data/${name}.json`); // Use KVStore
+            const store = new KVStore(`./data/${name}.json`);
             if (!store) {
                 return res.status(404).send('Store not found');
             }
@@ -129,14 +131,14 @@ initializeDatabase()
         app.post('/store/:name', (req, res) => {
             const { name } = req.params;
             const { key, value } = req.body;
-            const store = new KVStore(`./data/${name}.json`); // Use KVStore
+            const store = new KVStore(`./data/${name}.json`);
             store.set(key, value);
             res.send('Key-value pair set successfully');
         });
 
         app.delete('/store/:name/:key', (req, res) => {
             const { name, key } = req.params;
-            const store = new KVStore(`./data/${name}.json`); // Use KVStore
+            const store = new KVStore(`./data/${name}.json`);
             if (!store) {
                 return res.status(404).send('Store not found');
             }

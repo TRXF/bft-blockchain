@@ -1,8 +1,8 @@
+// transaction.js
 const EC = require('elliptic').ec;
 const SHA256 = require('crypto-js/sha256');
 const RIPEMD160 = require('crypto-js/ripemd160');
 const { addressPrefix } = require('./config');
-const { Wallet } = require('./wallet');
 
 const ec = new EC('secp256k1');
 
@@ -22,7 +22,12 @@ class Transaction {
 
     signTransaction(signingKey) {
         const publicKey = signingKey.getPublic('hex');
-        const expectedAddress = Wallet.generateAddress(publicKey);
+        const hash = SHA256(publicKey);
+        const address = RIPEMD160(hash).toString();
+        const expectedAddress = `${addressPrefix}${address}`;
+
+        console.log("Expected Address:", expectedAddress);
+        console.log("From Address:", this.fromAddress);
 
         if (expectedAddress !== this.fromAddress) {
             throw new Error(`You cannot sign transactions for other wallets! Expected address: ${expectedAddress}, got: ${this.fromAddress}`);
@@ -39,8 +44,6 @@ class Transaction {
         if (!this.signature || this.signature.length === 0) {
             throw new Error('No signature in this transaction');
         }
-
-        console.log(this.publicKey);
 
         const key = ec.keyFromPublic(this.publicKey, 'hex');
         return key.verify(this.calculateHash(), this.signature);

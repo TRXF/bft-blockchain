@@ -1,3 +1,4 @@
+// wallet.js
 const EC = require('elliptic').ec;
 const SHA256 = require('crypto-js/sha256');
 const RIPEMD160 = require('crypto-js/ripemd160');
@@ -27,11 +28,9 @@ class Wallet {
     }
 
     createTransaction(to, amount, sequence) {
-        console.log("CREAT", this.keys.privateKey);
-        const tx = new Transaction(this.address, to, amount, sequence, this.keys.publicKey); // Pass the public key
+        const fromAddress = Wallet.generateAddress(this.keys.publicKey);
+        const tx = new Transaction(fromAddress, to, amount, sequence, this.keys.publicKey); // Pass the public key
         const signingKey = ec.keyFromPrivate(this.keys.privateKey, 'hex');
-        console.log("ADDRESS", this.address);
-        console.log("SIGNING KEY", signingKey.getPublic('hex')); // Debug log
 
         tx.signTransaction(signingKey);
         return tx;
